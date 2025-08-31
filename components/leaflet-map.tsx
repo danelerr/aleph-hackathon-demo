@@ -18,6 +18,7 @@ L.Icon.Default.mergeOptions({
 interface LeafletMapProps {
   onPinClick: (incident: any) => void
   selectedFilter: string
+  userLocation?: { lat: number; lng: number } | null
 }
 
 const incidents = [
@@ -162,7 +163,42 @@ function LocationButton() {
   )
 }
 
-export default function LeafletMap({ onPinClick, selectedFilter }: LeafletMapProps) {
+// Component to handle external location updates
+function ExternalLocationHandler({ userLocation }: { userLocation?: { lat: number; lng: number } | null }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (userLocation) {
+      map.setView([userLocation.lat, userLocation.lng], 16)
+    }
+  }, [userLocation, map])
+
+  return userLocation ? (
+    <Marker 
+      position={[userLocation.lat, userLocation.lng]}
+      icon={L.divIcon({
+        className: 'external-user-location-icon',
+        html: `
+          <div style="
+            background-color: #10b981;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            animation: pulse 2s infinite;
+          "></div>
+        `,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      })}
+    >
+      <Popup>Tu ubicación</Popup>
+    </Marker>
+  ) : null
+}
+
+export default function LeafletMap({ onPinClick, selectedFilter, userLocation }: LeafletMapProps) {
   const { isDarkMode } = useDarkMode()
 
   const filteredIncidents = incidents.filter((incident) => {
@@ -220,6 +256,9 @@ export default function LeafletMap({ onPinClick, selectedFilter }: LeafletMapPro
 
         {/* Location button */}
         <LocationButton />
+        
+        {/* External location handler */}
+        <ExternalLocationHandler userLocation={userLocation} />
       </MapContainer>
 
       {/* Filter indicator */}

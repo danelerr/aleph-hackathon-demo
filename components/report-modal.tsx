@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useDarkMode } from "../app/page"
 import { createReport, type ReportInput } from "../lib/contracts/vigia-client"
 import { toast } from "sonner"
+import { MapPin, Loader2 } from "lucide-react"
 
 interface ReportModalProps {
   isOpen: boolean
@@ -29,6 +30,13 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
     "Otro"
   ]
 
+  const handleClose = () => {
+    setDescription("")
+    setCategory("")
+    setFile(null)
+    onClose()
+  }
+
   if (!isOpen) return null
 
   const handleSubmit = async () => {
@@ -43,7 +51,7 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
     }
 
     if (!location) {
-      toast.error("Por favor selecciona una ubicación en el mapa")
+      toast.error("Por favor obtén tu ubicación usando el botón flotante")
       return
     }
 
@@ -71,7 +79,7 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
         setDescription("")
         setCategory("")
         setFile(null)
-        onClose()
+        handleClose()
       } else {
         toast.error("Error al enviar el reporte", {
           description: result.error
@@ -87,9 +95,9 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div
-        className={`${isDarkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"} rounded-lg p-6 w-full max-w-md modal-enter`}
+        className={`${isDarkMode ? "bg-gray-800/90 text-white" : "bg-white/95 text-gray-900"} rounded-xl p-6 w-full max-w-md modal-enter shadow-2xl border ${isDarkMode ? "border-gray-700/50" : "border-gray-200/50"} backdrop-blur-md`}
       >
         <h2 className="text-xl font-bold text-center mb-6">Reportar Nueva Incidencia</h2>
 
@@ -160,20 +168,35 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
             />
           </div>
 
-          {/* Location Info */}
-          {location && (
-            <div className={`p-3 ${isDarkMode ? "bg-gray-700" : "bg-gray-100"} rounded-lg`}>
-              <p className="text-sm font-medium mb-1">Ubicación seleccionada:</p>
-              <p className="text-xs opacity-75">
-                Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
-              </p>
-            </div>
-          )}
+          {/* Location Section */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Ubicación</label>
+            
+            {location ? (
+              <div className={`p-4 ${isDarkMode ? "bg-gray-700" : "bg-gray-100"} rounded-lg border-2 border-green-500`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin className="w-4 h-4 text-green-500" />
+                  <p className="text-sm font-medium text-green-500">Ubicación obtenida</p>
+                </div>
+                <p className="text-xs opacity-75">
+                  Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
+                </p>
+              </div>
+            ) : (
+              <div className={`p-4 ${isDarkMode ? "bg-gray-700" : "bg-gray-100"} rounded-lg border-2 border-dashed ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
+                <div className="text-center">
+                  <MapPin className={`w-8 h-8 mx-auto mb-2 ${isDarkMode ? "text-gray-500" : "text-gray-400"}`} />
+                  <p className="text-sm opacity-75 mb-3">Presiona el botón flotante de ubicación</p>
+                  <p className="text-xs opacity-50">Necesitas obtener tu ubicación antes de enviar el reporte</p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isSubmitting}
               className={`flex-1 py-3 px-4 ${isDarkMode ? "bg-gray-700 hover:bg-gray-600 text-white" : "bg-gray-200 hover:bg-gray-300 text-gray-900"} rounded-lg transition-colors duration-200 disabled:opacity-50`}
             >
@@ -181,7 +204,7 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !location}
               className="flex-1 py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all duration-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Enviando..." : "Enviar a Blockchain"}

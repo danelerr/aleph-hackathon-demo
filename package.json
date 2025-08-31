@@ -7,7 +7,11 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "compile": "hardhat compile",
+    "deploy:local": "hardhat ignition deploy ignition/modules/Vigia.ts --network localhost",
+    "deploy:lisk": "hardhat ignition deploy ignition/modules/Vigia.ts --network liskSepolia",
+    "node": "hardhat node"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -67,6 +71,7 @@
     "zod": "3.25.67"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.0",
     "@nomicfoundation/hardhat-ignition": "^3.0.1",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
     "@tailwindcss/postcss": "^4.1.9",

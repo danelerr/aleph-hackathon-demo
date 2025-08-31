@@ -6,6 +6,7 @@ import { useDarkMode } from "../app/page"
 interface MapAreaProps {
   onPinClick: (incident: any) => void
   selectedFilter: string
+  userLocation?: { lat: number; lng: number } | null
 }
 
 // Importación dinámica del componente de mapa
@@ -26,6 +27,6 @@ const LeafletMap = dynamic(
   }
 )
 
-export default function MapArea({ onPinClick, selectedFilter }: MapAreaProps) {
-  return <LeafletMap onPinClick={onPinClick} selectedFilter={selectedFilter} />
+export default function MapArea({ onPinClick, selectedFilter, userLocation }: MapAreaProps) {
+  return <LeafletMap onPinClick={onPinClick} selectedFilter={selectedFilter} userLocation={userLocation} />
 }

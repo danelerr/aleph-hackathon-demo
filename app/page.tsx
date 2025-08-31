@@ -6,6 +6,7 @@ import FilterSection from "../components/filter-section"
 import MapArea from "../components/map-area"
 import FeedView from "../components/feed-view"
 import FloatingActionButton from "../components/floating-action-button"
+import FloatingLocationButton from "../components/floating-location-button"
 import ReportModal from "../components/report-modal"
 import IncidentModal from "../components/incident-modal"
 import { Toaster } from "sonner"
@@ -24,6 +25,7 @@ export default function VigiaApp() {
   const [selectedFilter, setSelectedFilter] = useState("all")
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [currentView, setCurrentView] = useState<"map" | "feed">("map")
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   const handlePinClick = (incident: any) => {
     setSelectedIncident(incident)
@@ -32,6 +34,10 @@ export default function VigiaApp() {
 
   const handleFilterChange = (status: string) => {
     setSelectedFilter(status)
+  }
+
+  const handleLocationObtained = (location: { lat: number; lng: number }) => {
+    setUserLocation(location)
   }
 
   const toggleDarkMode = () => {
@@ -108,14 +114,23 @@ export default function VigiaApp() {
         </div>
 
         {currentView === "map" ? (
-          <MapArea onPinClick={handlePinClick} selectedFilter={selectedFilter} />
+          <MapArea 
+            onPinClick={handlePinClick} 
+            selectedFilter={selectedFilter}
+            userLocation={userLocation}
+          />
         ) : (
           <FeedView onIncidentClick={handlePinClick} />
         )}
 
+        <FloatingLocationButton onLocationObtained={handleLocationObtained} />
         <FloatingActionButton onClick={() => setIsReportModalOpen(true)} />
 
-        <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} />
+        <ReportModal 
+          isOpen={isReportModalOpen} 
+          onClose={() => setIsReportModalOpen(false)} 
+          location={userLocation || undefined}
+        />
 
         <IncidentModal
           isOpen={isIncidentModalOpen}

@@ -1,6 +1,6 @@
 "use client"
 
-import { Moon, Sun, Menu, X, Wallet } from "lucide-react"
+import { Moon, Sun, Menu, X, Wallet, LogOut } from "lucide-react"
 import { useDarkMode } from "../app/page"
 import { useState } from "react"
 import { connectWallet } from "../lib/contracts/vigia-client"
@@ -42,6 +42,12 @@ export default function Header() {
     }
   }
 
+  const handleDisconnectWallet = () => {
+    setIsConnected(false)
+    setAccount("")
+    toast.success("Wallet desconectada")
+  }
+
   return (
     <header
       className={`${isDarkMode ? "bg-gray-800 border-gray-600" : "bg-white border-gray-200"} border-b transition-all duration-200`}
@@ -79,29 +85,35 @@ export default function Header() {
             {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          <button
-            onClick={handleConnectWallet}
-            disabled={isConnecting}
-            className={`${
-              isConnected 
-                ? "bg-green-500 hover:bg-green-600" 
-                : "bg-blue-500 hover:bg-blue-600"
-            } text-white px-3 py-1.5 text-sm rounded-lg transition-all duration-200 hover:shadow-lg ${
-              isConnected ? "hover:shadow-green-500/25" : "hover:shadow-blue-500/25"
-            } disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5`}
-          >
-            {isConnecting ? (
-              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Wallet className="w-3 h-3" />
-            )}
-            {isConnecting 
-              ? "Conectando..." 
-              : isConnected 
-                ? `${account.slice(0, 6)}...${account.slice(-4)}`
-                : "Conectar Wallet"
-            }
-          </button>
+          {isConnected ? (
+            <div className="flex items-center gap-2">
+              <div className="bg-green-500 text-white px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5">
+                <Wallet className="w-3 h-3" />
+                {account.slice(0, 6)}...{account.slice(-4)}
+              </div>
+              <button
+                onClick={handleDisconnectWallet}
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 text-sm rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-red-500/25 flex items-center gap-1.5"
+                title="Desconectar wallet"
+              >
+                <LogOut className="w-3 h-3" />
+                Desconectar
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleConnectWallet}
+              disabled={isConnecting}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 text-sm rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              {isConnecting ? (
+                <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Wallet className="w-3 h-3" />
+              )}
+              {isConnecting ? "Conectando..." : "Conectar Wallet"}
+            </button>
+          )}
         </div>
 
         <button
@@ -126,27 +138,34 @@ export default function Header() {
               <span className="text-sm">{isDarkMode ? "Modo Claro" : "Modo Oscuro"}</span>
             </button>
 
-            <button
-              onClick={handleConnectWallet}
-              disabled={isConnecting}
-              className={`${
-                isConnected 
-                  ? "bg-green-500 hover:bg-green-600" 
-                  : "bg-blue-500 hover:bg-blue-600"
-              } text-white px-3 py-2 rounded-lg transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
-            >
-              {isConnecting ? (
-                <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Wallet className="w-4 h-4" />
-              )}
-              {isConnecting 
-                ? "Conectando..." 
-                : isConnected 
-                  ? `${account.slice(0, 6)}...${account.slice(-4)}`
-                  : "Conectar Wallet"
-              }
-            </button>
+            {isConnected ? (
+              <div className="flex flex-col gap-2">
+                <div className="bg-green-500 text-white px-3 py-2 rounded-lg flex items-center gap-2">
+                  <Wallet className="w-4 h-4" />
+                  <span className="text-sm">{account.slice(0, 6)}...{account.slice(-4)}</span>
+                </div>
+                <button
+                  onClick={handleDisconnectWallet}
+                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-all duration-200 text-sm flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Desconectar Wallet
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleConnectWallet}
+                disabled={isConnecting}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isConnecting ? (
+                  <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Wallet className="w-4 h-4" />
+                )}
+                {isConnecting ? "Conectando..." : "Conectar Wallet"}
+              </button>
+            )}
           </div>
         </div>
       )}
