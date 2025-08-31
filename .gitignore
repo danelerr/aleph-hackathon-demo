@@ -11,6 +11,7 @@ out
 
 # Next.js environment variables
 .env*.local
+.env
 
 # Compilation output
 /dist

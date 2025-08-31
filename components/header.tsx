@@ -5,37 +5,63 @@ import { useDarkMode } from "../app/page"
 import { useState } from "react"
 import { connectWallet } from "../lib/contracts/vigia-client"
 import { toast } from "sonner"
+import { ethers } from "ethers"
+import WalletSelector from "./wallet-selector"
+import { switchToLiskSepolia } from "../lib/contracts/network-utils"
+import { useWallet } from "../contexts/wallet-context"
 
 export default function Header() {
   const { isDarkMode, toggleDarkMode } = useDarkMode()
+  const { 
+    selectedProvider, 
+    setSelectedProvider, 
+    isConnected, 
+    setIsConnected, 
+    account, 
+    setAccount, 
+    walletName, 
+    setWalletName 
+  } = useWallet()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isConnected, setIsConnected] = useState(false)
-  const [account, setAccount] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)
+  const [showWalletSelector, setShowWalletSelector] = useState(false)
 
   const handleConnectWallet = async () => {
+    // Mostrar selector de wallets en lugar de conectar directamente
+    setShowWalletSelector(true)
+  }
+
+  const handleWalletSelected = async (selectedProvider: any, selectedWalletName: string) => {
+    setShowWalletSelector(false)
     setIsConnecting(true)
+    
     try {
-      const walletConnection = await connectWallet()
+      // Guardar el proveedor seleccionado
+      setSelectedProvider(selectedProvider)
       
-      if (!walletConnection) {
-        toast.error("No se pudo conectar la wallet. Verifica que MetaMask esté instalado.")
-        return
-      }
+      // Usar el proveedor seleccionado
+      const provider = new ethers.BrowserProvider(selectedProvider)
       
-      const { provider, signer, account } = walletConnection
+      // Solicitar acceso a las cuentas
+      await provider.send("eth_requestAccounts", [])
+      
+      const signer = await provider.getSigner()
+      const account = await signer.getAddress()
+      
       setIsConnected(true)
       setAccount(account)
-      toast.success(`Wallet conectada: ${account.slice(0, 6)}...${account.slice(-4)}`)
+      setWalletName(selectedWalletName)
+      toast.success(`${selectedWalletName} conectada: ${account.slice(0, 6)}...${account.slice(-4)}`)
+      
     } catch (error: any) {
       console.error("Error conectando wallet:", error)
       
       if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
         toast.error("Conexión cancelada por el usuario")
       } else if (error.message?.includes('No injected provider found')) {
-        toast.error("Por favor instala MetaMask u otra wallet")
+        toast.error("Por favor instala una wallet (MetaMask, Rabbit, Coinbase, etc.)")
       } else {
-        toast.error("Error conectando wallet. Verifica tu configuración.")
+        toast.error(`Error conectando wallet: ${error.message}`)
       }
     } finally {
       setIsConnecting(false)
@@ -45,6 +71,7 @@ export default function Header() {
   const handleDisconnectWallet = () => {
     setIsConnected(false)
     setAccount("")
+    setWalletName("")
     toast.success("Wallet desconectada")
   }
 
@@ -89,6 +116,7 @@ export default function Header() {
             <div className="flex items-center gap-2">
               <div className="bg-green-500 text-white px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5">
                 <Wallet className="w-3 h-3" />
+                <span className="hidden md:inline">{walletName}:</span>
                 {account.slice(0, 6)}...{account.slice(-4)}
               </div>
               <button
@@ -97,7 +125,7 @@ export default function Header() {
                 title="Desconectar wallet"
               >
                 <LogOut className="w-3 h-3" />
-                Desconectar
+                <span className="hidden sm:inline">Desconectar</span>
               </button>
             </div>
           ) : (
@@ -169,6 +197,12 @@ export default function Header() {
           </div>
         </div>
       )}
+      
+      <WalletSelector 
+        isOpen={showWalletSelector}
+        onClose={() => setShowWalletSelector(false)}
+        onWalletSelected={handleWalletSelected}
+      />
     </header>
   )
 }

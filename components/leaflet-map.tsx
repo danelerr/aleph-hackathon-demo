@@ -6,6 +6,8 @@ import L from "leaflet"
 import { useDarkMode } from "@/app/page"
 import { Button } from "@/components/ui/button"
 import { Navigation } from "lucide-react"
+import { getAllReportsReadOnly, type Report } from "@/lib/contracts/vigia-client"
+import { getIPFSUrl } from "@/lib/ipfs-config"
 
 // Fix for default markers in Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -15,13 +17,29 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 })
 
+// Tipo común para incidents del mapa
+interface MapIncident {
+  id: string | number
+  lat: number
+  lng: number
+  status: string
+  color: string
+  description: string
+  confirmations: number
+  image: string
+  category?: string
+  creator?: string
+  timestamp?: number
+  isBlockchainReport?: boolean
+}
+
 interface LeafletMapProps {
-  onPinClick: (incident: any) => void
+  onPinClick: (incident: MapIncident) => void
   selectedFilter: string
   userLocation?: { lat: number; lng: number } | null
 }
 
-const incidents = [
+const incidents: MapIncident[] = [
   {
     id: 1,
     lat: -34.6037,
@@ -200,8 +218,55 @@ function ExternalLocationHandler({ userLocation }: { userLocation?: { lat: numbe
 
 export default function LeafletMap({ onPinClick, selectedFilter, userLocation }: LeafletMapProps) {
   const { isDarkMode } = useDarkMode()
+  const [blockchainReports, setBlockchainReports] = useState<Report[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const filteredIncidents = incidents.filter((incident) => {
+  // Cargar reportes de la blockchain
+  useEffect(() => {
+    const loadReports = async () => {
+      try {
+        setLoading(true)
+        console.log("🔄 Cargando reportes de la blockchain...")
+        const reports = await getAllReportsReadOnly("liskSepolia")
+        console.log("📡 Reportes cargados desde blockchain:", reports)
+        setBlockchainReports(reports)
+      } catch (error) {
+        console.error("❌ Error cargando reportes:", error)
+        setBlockchainReports([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadReports()
+    
+    // Recargar datos cada 30 segundos para capturar nuevos reportes
+    const interval = setInterval(loadReports, 30000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  // Convertir reportes de blockchain al formato del mapa
+  const blockchainIncidents = blockchainReports.map((report) => ({
+    id: `blockchain-${report.id}`,
+    lat: parseFloat(report.latitude),
+    lng: parseFloat(report.longitude),
+    status: report.status,
+    color: report.status === "Verificado" ? "#10B981" : 
+           report.confirmations.length >= 2 ? "#F59E0B" : "#6B7280",
+    description: report.description,
+    confirmations: report.confirmations.length,
+    image: report.imageHash ? getIPFSUrl(report.imageHash) : "/placeholder.jpg",
+    category: report.category,
+    creator: report.creator,
+    timestamp: report.timestamp,
+    isBlockchainReport: true
+  }))
+
+  // Combinar datos de prueba con reportes de blockchain
+  const allIncidents = [...incidents, ...blockchainIncidents]
+
+  const filteredIncidents = allIncidents.filter((incident) => {
     if (selectedFilter === "all") return true
     if (selectedFilter === "pending") return incident.status === "Necesita confirmación"
     if (selectedFilter === "verified") return incident.status === "Verificado"
@@ -214,6 +279,12 @@ export default function LeafletMap({ onPinClick, selectedFilter, userLocation }:
 
   return (
     <div className="flex-1 relative overflow-hidden">
+      {loading && (
+        <div className="absolute top-4 right-4 z-[1000] bg-white rounded-lg px-3 py-2 shadow-lg">
+          <span className="text-sm text-gray-600">Cargando reportes...</span>
+        </div>
+      )}
+      
       <MapContainer
         center={defaultCenter}
         zoom={13}
@@ -239,7 +310,7 @@ export default function LeafletMap({ onPinClick, selectedFilter, userLocation }:
             }}
           >
             <Popup>
-              <div className="text-sm">
+              <div className="text-sm min-w-[200px]">
                 <strong>{incident.description}</strong>
                 <br />
                 <span className="text-xs text-gray-600">
@@ -249,6 +320,31 @@ export default function LeafletMap({ onPinClick, selectedFilter, userLocation }:
                 <span className="text-xs text-gray-600">
                   Confirmaciones: {incident.confirmations}
                 </span>
+                {incident.isBlockchainReport && (
+                  <>
+                    <br />
+                    <span className="text-xs text-blue-600">
+                      📍 Reporte en blockchain
+                    </span>
+                    <br />
+                    <span className="text-xs text-gray-600">
+                      Categoría: {incident.category}
+                    </span>
+                    {incident.image && incident.image !== "/placeholder.jpg" && (
+                      <>
+                        <br />
+                        <img 
+                          src={incident.image} 
+                          alt="Reporte" 
+                          className="mt-2 w-full h-20 object-cover rounded"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder.jpg"
+                          }}
+                        />
+                      </>
+                    )}
+                  </>
+                )}
               </div>
             </Popup>
           </Marker>

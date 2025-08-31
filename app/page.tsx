@@ -10,6 +10,7 @@ import FloatingLocationButton from "../components/floating-location-button"
 import ReportModal from "../components/report-modal"
 import IncidentModal from "../components/incident-modal"
 import { Toaster } from "sonner"
+import { WalletProvider } from "../contexts/wallet-context"
 
 const DarkModeContext = createContext({
   isDarkMode: true,
@@ -46,8 +47,9 @@ export default function VigiaApp() {
   }
 
   return (
-    <DarkModeContext.Provider value={{ isDarkMode, toggleDarkMode }}>
-      <div className={`h-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
+    <WalletProvider>
+      <DarkModeContext.Provider value={{ isDarkMode, toggleDarkMode }}>
+        <div className={`h-screen flex flex-col ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
         <Header />
         <FilterSection onFilterChange={handleFilterChange} />
 
@@ -142,5 +144,6 @@ export default function VigiaApp() {
         <Toaster position="bottom-right" richColors />
       </div>
     </DarkModeContext.Provider>
+    </WalletProvider>
   )
 }

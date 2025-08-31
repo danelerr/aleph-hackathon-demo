@@ -4,7 +4,11 @@ import { useState, useEffect } from "react"
 import { useDarkMode } from "../app/page"
 import { createReport, type ReportInput } from "../lib/contracts/vigia-client"
 import { toast } from "sonner"
-import { MapPin, Loader2 } from "lucide-react"
+import { MapPin, Loader2, Upload, CheckCircle, X } from "lucide-react"
+import { create } from "@storacha/client"
+import { IPFS_CONFIG, isValidImageFile } from "../lib/ipfs-config"
+import NetworkHelpModal from "./network-help-modal"
+import { useWallet } from "../contexts/wallet-context"
 
 interface ReportModalProps {
   isOpen: boolean
@@ -17,7 +21,13 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
   const [category, setCategory] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [imageHash, setImageHash] = useState("")
+  const [imagePreview, setImagePreview] = useState<string>("")
+  const [client, setClient] = useState<any>(null)
+  const [showNetworkHelp, setShowNetworkHelp] = useState(false)
   const { isDarkMode } = useDarkMode()
+  const { selectedProvider } = useWallet()
 
   // Categorías disponibles
   const categories = [
@@ -30,10 +40,62 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
     "Otro"
   ]
 
+  // Inicializar cliente de Storacha
+  useEffect(() => {
+    const initClient = async () => {
+      try {
+        const w3Client = await create()
+        setClient(w3Client)
+        
+        console.log('Cliente de Storacha inicializado')
+        
+        // Intentar usar el espacio existente
+        try {
+          await w3Client.setCurrentSpace(IPFS_CONFIG.SPACE_DID)
+          console.log('Espacio configurado:', IPFS_CONFIG.SPACE_DID)
+        } catch (spaceError) {
+          console.warn('No se pudo configurar el espacio automáticamente:', spaceError)
+          // El usuario tendrá que configurar el espacio manualmente
+        }
+        
+      } catch (error) {
+        console.error('Error inicializando Storacha:', error)
+        toast.error('Error inicializando almacenamiento IPFS')
+      }
+    }
+    
+    if (isOpen) {
+      initClient()
+    }
+  }, [isOpen])
+
+  // Función para preparar imagen (vista previa)
+  const handleImageSelection = (selectedFile: File) => {
+    if (!isValidImageFile(selectedFile)) {
+      toast.error("Archivo no válido. Solo se permiten imágenes menores a 5MB")
+      return
+    }
+
+    setFile(selectedFile)
+    
+    // Crear vista previa inmediatamente
+    const previewUrl = URL.createObjectURL(selectedFile)
+    setImagePreview(previewUrl)
+    
+    toast.success("¡Imagen preparada! Se subirá cuando envíes el reporte.")
+  }
+
   const handleClose = () => {
+    // Limpiar vista previa para evitar memory leaks
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview)
+    }
     setDescription("")
     setCategory("")
     setFile(null)
+    setImageHash("")
+    setImagePreview("")
+    setIsUploading(false)
     onClose()
   }
 
@@ -58,17 +120,44 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
     setIsSubmitting(true)
 
     try {
+      let finalImageHash = ""
+      
+      // Si hay un archivo, subirlo a IPFS primero
+      if (file && client) {
+        console.log(`Subiendo ${file.name} a IPFS antes de enviar a blockchain...`)
+        setIsUploading(true)
+        
+        try {
+          const cid = await client.uploadFile(file)
+          finalImageHash = cid.toString()
+          setImageHash(finalImageHash)
+          console.log('Imagen subida a IPFS:', finalImageHash)
+          toast.success("¡Imagen subida a IPFS exitosamente!")
+        } catch (ipfsError) {
+          console.error("Error subiendo a IPFS:", ipfsError)
+          toast.error("Error subiendo imagen a IPFS")
+          setIsSubmitting(false)
+          setIsUploading(false)
+          return
+        } finally {
+          setIsUploading(false)
+        }
+      }
+
       // Preparar datos del reporte
       const reportData: ReportInput = {
         latitude: location.lat.toString(),
         longitude: location.lng.toString(),
         description: description.trim(),
         category,
-        imageHash: "", // Por ahora sin IPFS
+        imageHash: finalImageHash,
       }
 
-      // Crear reporte en el contrato
-      const result = await createReport(reportData, "hardhat")
+      console.log("Enviando reporte a blockchain:", reportData)
+      console.log("Usando proveedor:", selectedProvider ? "Wallet seleccionada" : "Sin wallet")
+
+      // Crear reporte en el contrato usando el proveedor seleccionado
+      const result = await createReport(reportData, "liskSepolia", selectedProvider)
 
       if (result.success) {
         toast.success("¡Reporte enviado a la blockchain exitosamente!", {
@@ -76,14 +165,16 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
         })
         
         // Limpiar formulario y cerrar modal
-        setDescription("")
-        setCategory("")
-        setFile(null)
         handleClose()
       } else {
         toast.error("Error al enviar el reporte", {
           description: result.error
         })
+        
+        // Si es un error de red, mostrar ayuda
+        if (result.error?.includes("chain") || result.error?.includes("network") || result.error?.includes("4202")) {
+          setShowNetworkHelp(true)
+        }
       }
 
     } catch (error) {
@@ -95,48 +186,84 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div
-        className={`${isDarkMode ? "bg-gray-800/90 text-white" : "bg-white/95 text-gray-900"} rounded-xl p-6 w-full max-w-md modal-enter shadow-2xl border ${isDarkMode ? "border-gray-700/50" : "border-gray-200/50"} backdrop-blur-md`}
+        className={`${isDarkMode ? "bg-gray-800/70 text-white" : "bg-white/80 text-gray-900"} rounded-xl p-6 w-full max-w-md modal-enter shadow-2xl border ${isDarkMode ? "border-gray-700/50" : "border-gray-200/50"} backdrop-blur-lg`}
       >
-        <h2 className="text-xl font-bold text-center mb-6">Reportar Nueva Incidencia</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">Reportar Nueva Incidencia</h2>
+          <button
+            onClick={handleClose}
+            className={`p-1 rounded-lg ${isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-200"} transition-colors`}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
         <div className="space-y-4">
-          {/* File Upload Area */}
-          <div
-            className={`border-2 border-dashed ${isDarkMode ? "border-gray-600 hover:border-gray-500" : "border-gray-300 hover:border-gray-400"} rounded-lg p-8 text-center transition-colors duration-200`}
-          >
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              id="photo-upload"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-            />
-            <label htmlFor="photo-upload" className="cursor-pointer">
-              <svg
-                className={`w-12 h-12 mx-auto mb-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                ></path>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                ></path>
-              </svg>
-              <p className={isDarkMode ? "text-gray-400" : "text-gray-500"}>
-                {file ? file.name : "Toca para subir una foto"}
-              </p>
-            </label>
+          {/* File Upload Area with Preview */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Fotografía (opcional)</label>
+            <div
+              className={`border-2 border-dashed ${
+                imagePreview || imageHash
+                  ? "border-green-500 bg-green-50 dark:bg-green-900/20" 
+                  : isDarkMode ? "border-gray-600 hover:border-gray-500" : "border-gray-300 hover:border-gray-400"
+              } rounded-lg p-4 text-center transition-colors duration-200`}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="photo-upload"
+                onChange={(e) => {
+                  const selectedFile = e.target.files?.[0]
+                  if (selectedFile) {
+                    handleImageSelection(selectedFile)
+                  }
+                }}
+                disabled={isUploading || !client}
+              />
+              
+              {imagePreview ? (
+                <div className="space-y-3">
+                  <img 
+                    src={imagePreview} 
+                    alt="Vista previa" 
+                    className="w-32 h-32 object-cover rounded-lg mx-auto"
+                  />
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    {file?.name} - Listo para subir
+                  </p>
+                  <label htmlFor="photo-upload" className="inline-block">
+                    <button 
+                      type="button"
+                      className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+                    >
+                      Cambiar imagen
+                    </button>
+                  </label>
+                </div>
+              ) : isUploading ? (
+                <div className="flex flex-col items-center py-4">
+                  <Loader2 className="w-8 h-8 mx-auto mb-2 text-blue-500 animate-spin" />
+                  <p className="text-blue-500">Subiendo a IPFS...</p>
+                </div>
+              ) : imageHash ? (
+                <div className="flex flex-col items-center py-4">
+                  <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                  <p className="text-green-500 font-medium">¡Imagen en blockchain!</p>
+                  <p className="text-xs mt-1 opacity-75 break-all">CID: {imageHash.slice(0, 30)}...</p>
+                </div>
+              ) : (
+                <label htmlFor="photo-upload" className="cursor-pointer block py-4">
+                  <Upload className={`w-8 h-8 mx-auto mb-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`} />
+                  <p className={`${isDarkMode ? "text-gray-400" : "text-gray-500"} text-sm`}>
+                    {!client ? "Inicializando almacenamiento..." : "Toca para subir una foto"}
+                  </p>
+                </label>
+              )}
+            </div>
           </div>
 
           {/* Category Selection */}
@@ -197,21 +324,34 @@ export default function ReportModal({ isOpen, onClose, location }: ReportModalPr
           <div className="flex gap-3 pt-4">
             <button
               onClick={handleClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isUploading}
               className={`flex-1 py-3 px-4 ${isDarkMode ? "bg-gray-700 hover:bg-gray-600 text-white" : "bg-gray-200 hover:bg-gray-300 text-gray-900"} rounded-lg transition-colors duration-200 disabled:opacity-50`}
             >
               Cancelar
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || !location}
-              className="flex-1 py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all duration-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting || !location || isUploading}
+              className="flex-1 py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {isSubmitting ? "Enviando..." : "Enviar a Blockchain"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {isUploading ? "Subiendo..." : "Enviando..."}
+                </>
+              ) : (
+                "Enviar a Blockchain"
+              )}
             </button>
           </div>
         </div>
       </div>
+      
+      <NetworkHelpModal 
+        isOpen={showNetworkHelp}
+        onClose={() => setShowNetworkHelp(false)}
+        walletName="tu wallet"
+      />
     </div>
   )
 }

@@ -4,7 +4,7 @@ export const VIGIA_CONTRACT_CONFIG = {
   addresses: {
     hardhat: "0x5fbdb2315678afecb367f032d93f642f64180aa3",
     localhost: "0x5fbdb2315678afecb367f032d93f642f64180aa3", 
-    liskSepolia: "", // Se actualizará cuando desplegemos en testnet
+    liskSepolia: "0x9aD20ACF1E3592efF473B510603f5f647994cE9b",
   },
   
   // Configuración de redes
