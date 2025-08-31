@@ -1,12 +1,46 @@
 "use client"
 
-import { Moon, Sun, Menu, X } from "lucide-react"
-import { useDarkMode } from "@/app/page"
+import { Moon, Sun, Menu, X, Wallet } from "lucide-react"
+import { useDarkMode } from "../app/page"
 import { useState } from "react"
+import { connectWallet } from "../lib/contracts/vigia-client"
+import { toast } from "sonner"
 
 export default function Header() {
   const { isDarkMode, toggleDarkMode } = useDarkMode()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
+  const [account, setAccount] = useState("")
+  const [isConnecting, setIsConnecting] = useState(false)
+
+  const handleConnectWallet = async () => {
+    setIsConnecting(true)
+    try {
+      const walletConnection = await connectWallet()
+      
+      if (!walletConnection) {
+        toast.error("No se pudo conectar la wallet. Verifica que MetaMask esté instalado.")
+        return
+      }
+      
+      const { provider, signer, account } = walletConnection
+      setIsConnected(true)
+      setAccount(account)
+      toast.success(`Wallet conectada: ${account.slice(0, 6)}...${account.slice(-4)}`)
+    } catch (error: any) {
+      console.error("Error conectando wallet:", error)
+      
+      if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
+        toast.error("Conexión cancelada por el usuario")
+      } else if (error.message?.includes('No injected provider found')) {
+        toast.error("Por favor instala MetaMask u otra wallet")
+      } else {
+        toast.error("Error conectando wallet. Verifica tu configuración.")
+      }
+    } finally {
+      setIsConnecting(false)
+    }
+  }
 
   return (
     <header
@@ -45,8 +79,28 @@ export default function Header() {
             {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 text-sm rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/25">
-            Conectar Wallet
+          <button
+            onClick={handleConnectWallet}
+            disabled={isConnecting}
+            className={`${
+              isConnected 
+                ? "bg-green-500 hover:bg-green-600" 
+                : "bg-blue-500 hover:bg-blue-600"
+            } text-white px-3 py-1.5 text-sm rounded-lg transition-all duration-200 hover:shadow-lg ${
+              isConnected ? "hover:shadow-green-500/25" : "hover:shadow-blue-500/25"
+            } disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5`}
+          >
+            {isConnecting ? (
+              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Wallet className="w-3 h-3" />
+            )}
+            {isConnecting 
+              ? "Conectando..." 
+              : isConnected 
+                ? `${account.slice(0, 6)}...${account.slice(-4)}`
+                : "Conectar Wallet"
+            }
           </button>
         </div>
 
@@ -72,8 +126,26 @@ export default function Header() {
               <span className="text-sm">{isDarkMode ? "Modo Claro" : "Modo Oscuro"}</span>
             </button>
 
-            <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition-all duration-200 text-sm">
-              Conectar Wallet
+            <button
+              onClick={handleConnectWallet}
+              disabled={isConnecting}
+              className={`${
+                isConnected 
+                  ? "bg-green-500 hover:bg-green-600" 
+                  : "bg-blue-500 hover:bg-blue-600"
+              } text-white px-3 py-2 rounded-lg transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
+            >
+              {isConnecting ? (
+                <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Wallet className="w-4 h-4" />
+              )}
+              {isConnecting 
+                ? "Conectando..." 
+                : isConnected 
+                  ? `${account.slice(0, 6)}...${account.slice(-4)}`
+                  : "Conectar Wallet"
+              }
             </button>
           </div>
         </div>

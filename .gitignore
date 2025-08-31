@@ -1,27 +1,20 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# Node modules
 /node_modules
 
-# next.js
-/.next/
-/out/
+# Compilation output
+/dist
 
-# production
-/build
+# pnpm deploy output
+/bundle
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# Hardhat Build Artifacts
+/artifacts
 
-# env files
-.env*
+# Hardhat compilation (v2) support directory
+/cache
 
-# vercel
-.vercel
+# Typechain output
+/types
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Hardhat coverage reports
+/coverage

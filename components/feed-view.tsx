@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useDarkMode } from "@/app/page"
+import { useDarkMode } from "../app/page"
 
 interface FeedViewProps {
   onIncidentClick: (incident: any) => void

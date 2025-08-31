@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from 'next/dynamic'
-import { useDarkMode } from "@/app/page"
+import { useDarkMode } from "../app/page"
 
 interface MapAreaProps {
   onPinClick: (incident: any) => void

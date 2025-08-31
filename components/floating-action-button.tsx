@@ -1,6 +1,6 @@
 "use client"
 
-import { useDarkMode } from "@/app/page"
+import { useDarkMode } from "../app/page"
 
 interface FloatingActionButtonProps {
   onClick: () => void

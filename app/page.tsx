@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, createContext, useContext } from "react"
-import Header from "@/components/header"
-import FilterSection from "@/components/filter-section"
-import MapArea from "@/components/map-area"
-import FeedView from "@/components/feed-view"
-import FloatingActionButton from "@/components/floating-action-button"
-import ReportModal from "@/components/report-modal"
-import IncidentModal from "@/components/incident-modal"
+import Header from "../components/header"
+import FilterSection from "../components/filter-section"
+import MapArea from "../components/map-area"
+import FeedView from "../components/feed-view"
+import FloatingActionButton from "../components/floating-action-button"
+import ReportModal from "../components/report-modal"
+import IncidentModal from "../components/incident-modal"
+import { Toaster } from "sonner"
 
 const DarkModeContext = createContext({
   isDarkMode: true,
@@ -121,6 +122,9 @@ export default function VigiaApp() {
           onClose={() => setIsIncidentModalOpen(false)}
           incident={selectedIncident}
         />
+
+        {/* Toaster para notificaciones */}
+        <Toaster position="bottom-right" richColors />
       </div>
     </DarkModeContext.Provider>
   )

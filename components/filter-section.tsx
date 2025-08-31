@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Filter, ChevronDown, ChevronUp } from "lucide-react"
-import { useDarkMode } from "@/app/page"
+import { useDarkMode } from "../app/page"
 
 interface FilterSectionProps {
   onFilterChange: (status: string) => void
