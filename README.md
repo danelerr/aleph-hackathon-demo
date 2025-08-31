@@ -3,7 +3,7 @@
 
 *[Aleph Hackathon '25] [Lisk] [DePIN] [Public Good]*
 
-🔴 **Live Demo**: https://vigia-aleph-hackathton-32s16q6pt-danelerrs-projects.vercel.app/
+🔴 **Live Demo**: https://vigia-aleph-hackathton.vercel.app/
 
 🎬 **Video Pitch**: https://www.youtube.com/watch?v=pn6SkEJF4T0
 
