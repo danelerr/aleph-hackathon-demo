@@ -21,15 +21,22 @@ out
 
 # Hardhat Build Artifacts
 /artifacts
+/artifacts-zk
 
 # Hardhat compilation (v2) support directory
 /cache
+/cache-zk
 
 # Typechain output
 /types
+/typechain-types
 
 # Hardhat coverage reports
 /coverage
+/coverage.json
+
+# Hardhat Ignition default folder for deployments against a local node
+ignition/deployments/chain-31337
 
 # OS generated files
 .DS_Store
@@ -45,3 +52,9 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Vercel
+.vercel
+
+# Backup files
+*.backup
