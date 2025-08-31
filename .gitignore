@@ -1,6 +1,17 @@
 # Node modules
 /node_modules
 
+# Next.js build output
+/.next/
+/out/
+
+# Next.js runtime data
+.next
+out
+
+# Next.js environment variables
+.env*.local
+
 # Compilation output
 /dist
 
@@ -18,3 +29,18 @@
 
 # Hardhat coverage reports
 /coverage
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
